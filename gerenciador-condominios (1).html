@@ -232,7 +232,27 @@
             let tasks = [];
             let editingId = null;
 
+            // Função melhorada para verificar suporte ao localStorage
+            function isLocalStorageAvailable() {
+                try {
+                    const test = '__localStorage_test__';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    return true;
+                } catch(e) {
+                    return false;
+                }
+            }
+
+            const hasLocalStorage = isLocalStorageAvailable();
+
             function loadTasks() {
+                if (!hasLocalStorage) {
+                    console.warn('localStorage não disponível, usando dados temporários');
+                    renderTasks();
+                    return;
+                }
+                
                 try {
                     const saved = localStorage.getItem('condominioTasks');
                     if (saved) {
@@ -246,6 +266,11 @@
             }
 
             function saveTasks() {
+                if (!hasLocalStorage) {
+                    console.warn('localStorage não disponível, dados não serão persistidos');
+                    return;
+                }
+                
                 try {
                     localStorage.setItem('condominioTasks', JSON.stringify(tasks));
                 } catch (e) {
