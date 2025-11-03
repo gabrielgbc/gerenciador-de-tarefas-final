@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Tarefas - Condomínios</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .add-task {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .add-task input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        .add-task input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .add-task button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .add-task button:hover {
+            transform: translateY(-2px);
+        }
+
+        .tasks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .task-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .task-item.completed {
+            background: #e8f5e9;
+            opacity: 0.8;
+        }
+
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .task-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .task-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .task-item.completed .task-name {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        .task-date {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .task-input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-edit {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-save {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #ff5252;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Gerenciador de Tarefas - Condomínios</h1>
+        
+        <div class="add-task">
+            <input type="text" id="taskInput" placeholder="Digite o nome do condomínio ou tarefa..." />
+            <button id="addBtn">+ Adicionar</button>
+        </div>
+
+        <div class="tasks-list" id="tasksList"></div>
+    </div>
+
+    <script>
+        let tasks = [];
+        let editingId = null;
+
+        // Carregar tarefas salvas
+        function loadTasks() {
+            const saved = localStorage.getItem('condominioTasks');
+            if (saved) {
+                try {
+                    tasks = JSON.parse(saved);
+                } catch (e) {
+                    tasks = [];
+                }
+            }
+            renderTasks();
+        }
+
+        // Salvar tarefas
+        function saveTasks() {
+            localStorage.setItem('condominioTasks', JSON.stringify(tasks));
+        }
+
+        // Adicionar tarefa
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            const taskName = input.value.trim();
+            
+            if (taskName === '') {
+                alert('Por favor, digite o nome da tarefa!');
+                return;
+            }
+
+            const newTask = {
+                id: Date.now(),
+                name: taskName,
+                completed: false,
+                createdAt: new Date().toISOString(),
+                completedAt: null
+            };
+
+            tasks.unshift(newTask);
+            saveTasks();
+            renderTasks();
+            input.value = '';
+            input.focus();
+        }
+
+        // Marcar como concluído
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                task.completedAt = task.completed ? new Date().toISOString() : null;
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // Editar tarefa
+        function startEdit(id) {
+            editingId = id;
+            renderTasks();
+            setTimeout(() => {
+                const input = document.getElementById(`input-${id}`);
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 0);
+        }
+
+        // Salvar edição
+        function saveEdit(id) {
+            const input = document.getElementById(`input-${id}`);
+            if (!input) return;
+            
+            const newName = input.value.trim();
+            
+            if (newName === '') {
+                alert('O nome não pode ficar vazio!');
+                return;
+            }
+
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.name = newName;
+                editingId = null;
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // Cancelar edição
+        function cancelEdit() {
+            editingId = null;
+            renderTasks();
+        }
+
+        // Deletar tarefa
+        function deleteTask(id) {
+            if (confirm('Tem certeza que deseja excluir esta tarefa?')) {
+                tasks = tasks.filter(t => t.id !== id);
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // Formatar data
+        function formatDate(isoDate) {
+            if (!isoDate) return '';
+            const date = new Date(isoDate);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} às ${hours}:${minutes}`;
+        }
+
+        // Renderizar tarefas
+        function renderTasks() {
+            const container = document.getElementById('tasksList');
+            
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm0 4c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1.4c0-2 4-3.1 6-3.1s6 1.1 6 3.1V19z"/>
+                        </svg>
+                        <p>Nenhuma tarefa adicionada ainda.<br>Adicione uma tarefa acima para começar!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const isEditing = editingId === task.id;
+                
+                const taskDiv = document.createElement('div');
+                taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
+                
+                // Checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'task-checkbox';
+                checkbox.checked = task.completed;
+                checkbox.addEventListener('change', () => toggleTask(task.id));
+                taskDiv.appendChild(checkbox);
+                
+                if (isEditing) {
+                    // Input de edição
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'task-input';
+                    input.id = `input-${task.id}`;
+                    input.value = task.name;
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            saveEdit(task.id);
+                        }
+                    });
+                    taskDiv.appendChild(input);
+                } else {
+                    // Conteúdo da tarefa
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'task-content';
+                    
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'task-name';
+                    nameDiv.textContent = task.name;
+                    
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = 'task-date';
+                    dateDiv.textContent = task.completed 
+                        ? `✅ Concluído em: ${formatDate(task.completedAt)}`
+                        : `📅 Criado em: ${formatDate(task.createdAt)}`;
+                    
+                    contentDiv.appendChild(nameDiv);
+                    contentDiv.appendChild(dateDiv);
+                    taskDiv.appendChild(contentDiv);
+                }
+                
+                // Botões de ação
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'task-actions';
+                
+                if (isEditing) {
+                    const saveBtn = document.createElement('button');
+                    saveBtn.className = 'btn btn-save';
+                    saveBtn.textContent = 'Salvar';
+                    saveBtn.addEventListener('click', () => saveEdit(task.id));
+                    
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn btn-cancel';
+                    cancelBtn.textContent = 'Cancelar';
+                    cancelBtn.addEventListener('click', () => cancelEdit());
+                    
+                    actionsDiv.appendChild(saveBtn);
+                    actionsDiv.appendChild(cancelBtn);
+                } else {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn btn-edit';
+                    editBtn.textContent = 'Editar';
+                    editBtn.addEventListener('click', () => startEdit(task.id));
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-delete';
+                    deleteBtn.textContent = 'Excluir';
+                    deleteBtn.addEventListener('click', () => deleteTask(task.id));
+                    
+                    actionsDiv.appendChild(editBtn);
+                    actionsDiv.appendChild(deleteBtn);
+                }
+                
+                taskDiv.appendChild(actionsDiv);
+                container.appendChild(taskDiv);
+            });
+        }
+
+        // Event listeners
+        document.getElementById('addBtn').addEventListener('click', addTask);
+        
+        document.getElementById('taskInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+
+        // Carregar ao iniciar
+        loadTasks();
+    </script>
+</body>
+</html>
